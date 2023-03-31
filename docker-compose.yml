@@ -1,0 +1,56 @@
+version: "3.9"
+services:
+  rabbit:
+    image: rabbitmq:3.11.6-management
+    ports:
+      - "15672:15672"
+      - "5672:5672"
+    healthcheck:
+      test: rabbitmq-diagnostics check_port_connectivity
+      interval: 1s
+      timeout: 30s
+      retries: 60
+    networks:
+      - sbnet
+
+  sbemulator:
+    image: devopsifyme/sbemu:latest
+    build:
+      x-bake:
+        platforms:
+          - "linux/arm64"
+          - "linux/amd64"
+      tags:
+        - "devopsifyme/sbemu:latest"
+        - "devopsifyme/sbemu:${TAG:-0.0.1-local}"
+        - "devopsifyme/sbemu:${TAGMAJOR:-0}"
+        - "devopsifyme/sbemu:${TAGMAJORMINOR:-0.0}"
+        - "devopsifyme/sbemu:${TAGMAJORMINORPATCH:-0.0.1}"
+      context: .
+      dockerfile: ./src/ServiceBusEmulator.Host/Dockerfile
+    environment:
+      - EMULATOR__RABBITMQ__HOST=rabbit
+      - EMULATOR__RABBITMQ__USERNAME=guest
+      - EMULATOR__RABBITMQ__PASSWORD=guest
+    ports:
+      - "5671:5671"
+    links: 
+      - rabbit
+    networks:
+      - sbnet
+    depends_on:
+      rabbit:
+        condition: service_healthy
+  
+  function:
+    build:
+      context: .
+      dockerfile: ./Functions.ServiceBus/Dockerfile
+    networks:
+      - sbnet
+
+    ports: 
+      - "7071:80"
+
+networks:
+  sbnet:
