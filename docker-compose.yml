@@ -12,6 +12,8 @@ services:
       retries: 60
     networks:
       - sbnet
+    environment:
+      - RABBITMQ_ERLANG_COOKIE=value
 
   sbemulator:
     image: devopsifyme/sbemu:latest
